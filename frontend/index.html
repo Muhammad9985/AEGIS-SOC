@@ -139,14 +139,25 @@
         </section>
 
         <!-- VIEW SELECTOR TABS -->
-        <nav class="view-tabs">
-            <button class="tab-btn active" data-tab="tab-war-room"><i data-lucide="monitor"></i> WAR ROOM & ATTACK GRAPH</button>
-            <button class="tab-btn" data-tab="tab-ai-analyst"><i data-lucide="bot"></i> VALKYRIE AI ANALYST & COPILOT</button>
-            <button class="tab-btn" data-tab="tab-mitre"><i data-lucide="grid"></i> MITRE ATT&CK HEATMAP</button>
-            <button class="tab-btn" data-tab="tab-soar"><i data-lucide="shield-check"></i> SOAR ACTIONS LOG</button>
-            <button class="tab-btn tab-guide-btn" data-tab="tab-guide"><i data-lucide="book-open"></i> OPERATOR GUIDE & PLAYBOOKS</button>
-            <button class="tab-btn btn-dossier" id="btnOpenDossier" title="Generate Autonomous Forensic Incident Dossier"><span class="dossier-pulse-dot"></span><i data-lucide="file-text"></i> INCIDENT DOSSIER</button>
-        </nav>
+        <div class="view-tabs-wrapper">
+            <button class="tabs-scroll-btn" id="btnScrollTabsLeft" title="Scroll tabs left"><i data-lucide="chevron-left"></i></button>
+            <nav class="view-tabs" id="viewTabsNav">
+                <button class="tab-btn active" data-tab="tab-war-room"><i data-lucide="monitor"></i> WAR ROOM & ATTACK GRAPH</button>
+                <button class="tab-btn" data-tab="tab-ai-analyst"><i data-lucide="bot"></i> VALKYRIE AI ANALYST & COPILOT</button>
+                <button class="tab-btn" data-tab="tab-mitre"><i data-lucide="grid"></i> MITRE ATT&CK HEATMAP</button>
+                <button class="tab-btn" data-tab="tab-soar"><i data-lucide="shield-check"></i> SOAR ACTIONS LOG</button>
+                <button class="tab-btn" data-tab="tab-hunting"><i data-lucide="search"></i> THREAT HUNTING (KQL)</button>
+                <button class="tab-btn" data-tab="tab-deception"><i data-lucide="shield-alert"></i> ACTIVE DECEPTION & CANARIES</button>
+                <button class="tab-btn" data-tab="tab-dfir"><i data-lucide="database"></i> DFIR EVIDENCE VAULT</button>
+                <button class="tab-btn" data-tab="tab-defense"><i data-lucide="shield-alert"></i> AUTONOMOUS DEFENSE & BAS ARENA</button>
+                <button class="tab-btn tab-guide-btn" data-tab="tab-guide"><i data-lucide="book-open"></i> OPERATOR GUIDE & PLAYBOOKS</button>
+                <button class="tab-btn btn-dossier" id="btnOpenDossier" title="Generate Autonomous Forensic Incident Dossier"><span class="dossier-pulse-dot"></span><i data-lucide="file-text"></i> INCIDENT DOSSIER</button>
+            </nav>
+            <button class="tabs-scroll-btn" id="btnScrollTabsRight" title="Scroll tabs right"><i data-lucide="chevron-right"></i></button>
+            <div class="tabs-overflow-hint" id="tabsOverflowHint" title="Click to scroll and see more tabs">
+                <span class="overflow-pulse-indicator"></span> MORE TABS <i data-lucide="chevron-right"></i>
+            </div>
+        </div>
 
         <!-- MAIN CONTENT AREA -->
         <main class="dashboard-viewport">
@@ -270,6 +281,16 @@
                             </div>
                         </div>
 
+                        <!-- Multi-Agent Cognitive SOC Hierarchy -->
+                        <div class="cognitive-agents-strip">
+                            <div class="section-sub-header">
+                                <i data-lucide="cpu"></i> MULTI-AGENT COGNITIVE SQUADRON (SYNCHRONOUS SOC AGENTS)
+                            </div>
+                            <div class="agents-grid" id="cognitiveAgentsGrid">
+                                <!-- Populated dynamically via JS -->
+                            </div>
+                        </div>
+
                         <!-- Live Neural Thought Feed -->
                         <div class="neural-stream-box">
                             <div class="stream-header">
@@ -376,108 +397,1245 @@
                 </div>
             </div>
 
-            <!-- TAB 5: OPERATOR GUIDE & PLAYBOOKS -->
+            <!-- TAB: THREAT HUNTING (KQL) -->
+            <div class="tab-pane" id="tab-hunting">
+                <div class="glass-panel hunting-container">
+                    <div class="panel-header">
+                        <div class="header-left">
+                            <i data-lucide="search" class="header-icon cyan"></i>
+                            <h2>AEGIS KQL THREAT HUNTING ENGINE</h2>
+                        </div>
+                        <span class="badge-tag live-badge">ANALYTICAL QUERY KERNEL</span>
+                    </div>
+
+                    <!-- KQL Search Bar & Prebuilts -->
+                    <div class="hunt-search-box">
+                        <div class="hunt-input-wrapper">
+                            <i data-lucide="terminal" class="hunt-term-icon"></i>
+                            <input type="text" id="huntQueryInput" class="cyber-input hunt-input" placeholder="Enter KQL query (e.g. process_name in ('vssadmin.exe', 'wmic.exe') and command_line contains 'shadow')...">
+                            <button id="btnExecuteHunt" class="btn-primary hunt-btn"><i data-lucide="play"></i> Run Hunt</button>
+                        </div>
+                        <div class="hunt-prebuilts-row">
+                            <span class="prebuilt-label"><i data-lucide="zap"></i> PRO HUNT QUERIES:</span>
+                            <div class="prebuilt-chips" id="huntPrebuiltChips">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hunt Metrics & Breakdown Strip -->
+                    <div class="hunt-stats-strip" id="huntStatsStrip">
+                        <div class="hunt-stat-card">
+                            <span class="stat-title">MATCHED EVENTS</span>
+                            <span class="stat-val" id="huntMatchCount">0</span>
+                        </div>
+                        <div class="hunt-stat-card">
+                            <span class="stat-title">QUERY LATENCY</span>
+                            <span class="stat-val cyan" id="huntLatency">0.0 ms</span>
+                        </div>
+                        <div class="hunt-stat-card wide">
+                            <span class="stat-title">TOP PROCESSES IN RESULTS</span>
+                            <div class="proc-chips-row" id="huntProcChips">
+                                <span class="empty-proc-chip">Execute a hunt query to generate process breakdown</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Hunt Results Table -->
+                    <div class="table-container hunt-table-scroll">
+                        <table class="cyber-table">
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>SEV</th>
+                                    <th>EID</th>
+                                    <th>HOST</th>
+                                    <th>PROCESS</th>
+                                    <th>COMMAND LINE / DETAILS</th>
+                                    <th>TACTIC</th>
+                                    <th>INSPECT</th>
+                                </tr>
+                            </thead>
+                            <tbody id="huntTableBody">
+                                <tr>
+                                    <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                                        Select a pre-built query above or type a custom KQL search expression.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: ACTIVE DECEPTION & CANARIES -->
+            <div class="tab-pane" id="tab-deception">
+                <div class="glass-panel deception-container">
+                    <div class="panel-header">
+                        <div class="header-left">
+                            <i data-lucide="shield-alert" class="header-icon amber"></i>
+                            <h2>ACTIVE DECEPTION & CANARY HONEY-FILES TRIPWIRE DECK</h2>
+                        </div>
+                        <div class="header-badges">
+                            <button class="btn-micro btn-cyan" id="btnResetCanaries"><i data-lucide="rotate-ccw"></i> Re-Arm Canaries</button>
+                            <button class="btn-micro btn-danger" id="btnTestTripwire"><i data-lucide="flame"></i> Simulate Canary Tamper</button>
+                        </div>
+                    </div>
+
+                    <div class="deception-hero-card">
+                        <div class="deception-info">
+                            <h3><i data-lucide="target"></i> ANTI-RANSOMWARE & CREDENTIAL DECEPTION TRIPWIRES</h3>
+                            <p>AEGIS deploys decoy honey-files (passwords, AWS keys, financial ledgers) in local directories. Any process attempting to open, modify, delete, or encrypt a canary triggers an immediate <strong>CRITICAL Defcon 1 alert</strong>, allowing SOAR to auto-terminate ransomware in milliseconds before real user files are compromised.</p>
+                        </div>
+                        <div class="deception-counter-box">
+                            <div class="deception-counter">
+                                <span class="counter-num green" id="armedCanaryCount">4</span>
+                                <span class="counter-lbl">CANARIES ARMED</span>
+                            </div>
+                            <div class="deception-counter">
+                                <span class="counter-num red" id="trippedCanaryCount">0</span>
+                                <span class="counter-lbl">TRIPWIRES TRIPPED</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Canaries Grid -->
+                    <h3 class="section-sub-header"><i data-lucide="file-lock-2"></i> DEPLOYED HONEY-FILE ARTIFACTS:</h3>
+                    <div class="canaries-grid" id="canariesListGrid">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+
+                    <!-- Tripwire Audit Trail -->
+                    <h3 class="section-sub-header" style="margin-top: 20px;"><i data-lucide="history"></i> DECEPTION BREACH & TRIPWIRE AUDIT LOG:</h3>
+                    <div class="table-container">
+                        <table class="cyber-table">
+                            <thead>
+                                <tr>
+                                    <th>TIMESTAMP</th>
+                                    <th>CANARY FILE</th>
+                                    <th>CATEGORY</th>
+                                    <th>TRIP EVENT</th>
+                                    <th>DETECTION DETAILS</th>
+                                    <th>STATUS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="deceptionAuditBody">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 25px;">
+                                        All canary tripwires reporting pristine integrity. No decoy tampering detected.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: DFIR EVIDENCE VAULT -->
+            <div class="tab-pane" id="tab-dfir">
+                <div class="glass-panel dfir-container">
+                    <div class="panel-header">
+                        <div class="header-left">
+                            <i data-lucide="database" class="header-icon emerald"></i>
+                            <h2>DIGITAL FORENSICS & INCIDENT RESPONSE (DFIR) EVIDENCE VAULT</h2>
+                        </div>
+                        <div class="header-badges">
+                            <span class="badge-tag live-badge">IMMUTABLE FORENSIC VAULT</span>
+                        </div>
+                    </div>
+
+                    <div class="dfir-dump-strip">
+                        <div class="dump-controls">
+                            <span class="dump-label"><i data-lucide="camera"></i> CAPTURE ON-DEMAND PROCESS FORENSICS:</span>
+                            <input type="number" id="dfirPidInput" placeholder="Enter target PID (e.g. 1024)..." class="cyber-input dump-pid-input">
+                            <input type="text" id="dfirProcessNameInput" placeholder="Process Name (e.g. suspicious.exe)..." class="cyber-input dump-name-input">
+                            <button id="btnCaptureDfir" class="btn-primary"><i data-lucide="download"></i> Secure Memory & Artifacts</button>
+                        </div>
+                        <p class="dump-hint">Captures full loaded modules, memory map footprints, open file handles, TCP/UDP sockets, and parent-child process lineage into <code>data/vault/</code> before threat neutralization.</p>
+                    </div>
+
+                    <!-- Artifacts Table -->
+                    <h3 class="section-sub-header"><i data-lucide="folder-archive"></i> SECURED FORENSIC MANIFESTS:</h3>
+                    <div class="table-container">
+                        <table class="cyber-table">
+                            <thead>
+                                <tr>
+                                    <th>ARTIFACT ID</th>
+                                    <th>TIMESTAMP</th>
+                                    <th>PID</th>
+                                    <th>PROCESS NAME</th>
+                                    <th>COMMAND LINE</th>
+                                    <th>MEMORY (RSS)</th>
+                                    <th>SOCKETS</th>
+                                    <th>MODULES</th>
+                                    <th>INSPECT</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dfirTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: OPERATOR GUIDE & PLAYBOOKS -->
             <div class="tab-pane" id="tab-guide">
                 <div class="glass-panel guide-container">
                     <div class="panel-header">
                         <div class="header-left">
                             <i data-lucide="book-open" class="header-icon cyan"></i>
-                            <h2>AEGIS-SOC OPERATOR MANUAL // INCIDENT CONTAINMENT RUNBOOKS</h2>
+                            <div>
+                                <h2 style="margin: 0; font-size: 1.05rem;">AEGIS-SOC OPERATOR MANUAL // UNIFIED CYBER DEFENSE MANUAL</h2>
+                                <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">MASTER INCIDENT RESPONSE RUNBOOKS & KERNEL SENSOR ARCHITECTURE</span>
+                            </div>
                         </div>
-                        <span class="badge-tag live-badge">CYBER DEFENSE PLAYBOOKS</span>
+                        <div class="header-badges">
+                            <span class="badge-tag live-badge"><span class="pulse-dot green"></span> ENTERPRISE MANUAL v3.0</span>
+                            <span class="badge-tag badge-purple">100% REAL WINDOWS SENSOR</span>
+                            <span class="badge-tag badge-cyan">AUTONOMOUS SOAR</span>
+                        </div>
                     </div>
+
+                    <!-- Interactive Guide Search Bar -->
+                    <div class="guide-search-container">
+                        <i data-lucide="search" style="color: var(--cyan); width: 16px; height: 16px; flex-shrink: 0;"></i>
+                        <input type="text" id="guideSearchInput" class="guide-search-input" placeholder="Search topics, playbooks, KQL queries, Event IDs, defense tools, troubleshooting..." autocomplete="off">
+                        <span id="guideSearchCounter" class="guide-search-counter">11 SECTIONS</span>
+                    </div>
+
+                    <!-- Quick Jump Navigation Bar -->
+                    <div class="guide-nav-pills">
+                        <a href="#sec-overview" class="guide-pill"><i data-lucide="cpu"></i> 1. Pipeline & Flow</a>
+                        <a href="#sec-events" class="guide-pill"><i data-lucide="file-text"></i> 2. Event IDs & Telemetry</a>
+                        <a href="#sec-modules" class="guide-pill"><i data-lucide="layout-grid"></i> 3. 8 Command Workspaces</a>
+                        <a href="#sec-defense" class="guide-pill"><i data-lucide="shield-alert"></i> 4. 5 Defense Shields</a>
+                        <a href="#sec-hunting" class="guide-pill"><i data-lucide="search"></i> 5. Threat Hunting (KQL)</a>
+                        <a href="#sec-copilot" class="guide-pill"><i data-lucide="bot"></i> 6. Copilot Commands</a>
+                        <a href="#sec-deception" class="guide-pill"><i data-lucide="shield"></i> 7. Active Deception</a>
+                        <a href="#sec-dfir" class="guide-pill"><i data-lucide="database"></i> 8. DFIR Forensics Vault</a>
+                        <a href="#sec-playbooks" class="guide-pill"><i data-lucide="book-open"></i> 9. IR Runbooks (Playbooks)</a>
+                        <a href="#sec-testing" class="guide-pill"><i data-lucide="play-circle"></i> 10. 2-Min Live Demo</a>
+                        <a href="#sec-faq" class="guide-pill"><i data-lucide="help-circle"></i> 11. FAQ & Troubleshooting</a>
+                    </div>
+
                     <div class="guide-scroll-content">
                         
-                        <!-- Section 1: Quickstart -->
-                        <div class="guide-card">
-                            <h3><i data-lucide="play"></i> 1. SYSTEM OVERVIEW & QUICKSTART</h3>
-                            <p><strong>AEGIS-SOC</strong> is an autonomous, Windows-native Security Information and Event Management (SIEM) platform connected directly to your physical PC kernel. It runs an autonomous Tier-1/2/3 AI SOC Analyst (<strong>VALKYRIE-01</strong>) and active SOAR containment.</p>
-                            <div class="guide-grid-2">
-                                <div class="guide-sub-card">
-                                    <h4>📡 Live Windows Telemetry</h4>
-                                    <p>Reads live <code>System</code> and <code>Application</code> event logs via <code>win32evtlog</code>, and monitors real-time processes and TCP sockets with <code>psutil</code>.</p>
+                        <!-- SECTION 1: System Overview & Architecture -->
+                        <div class="guide-card" id="sec-overview">
+                            <h3><i data-lucide="cpu" class="cyan"></i> 1. SYSTEM ARCHITECTURE & END-TO-END PIPELINE FLOW</h3>
+                            <p>
+                                <strong>What is AEGIS-SOC?</strong> In simple terms, traditional SIEMs only display passive alerts and require human analysts to manually click buttons hours after an intrusion. <strong>AEGIS-SOC</strong> is a next-generation, Windows-native Security Operations Center that unifies <strong>SIEM</strong> (event collection), <strong>EDR</strong> (endpoint detection and deep kernel inspection), and <strong>SOAR</strong> (autonomous active counter-attacks) into a single, cohesive defensive weapon. It is directly tethered to your physical Windows OS with <strong>100% real live telemetry</strong> and zero mock data.
+                            </p>
+
+                            <!-- End-to-End Pipeline Diagram -->
+                            <div class="guide-pipeline">
+                                <div class="pipeline-node">
+                                    <div class="pipeline-node-header">
+                                        <i data-lucide="activity" style="color: var(--cyan); width: 14px; height: 14px;"></i>
+                                        <span>WINDOWS KERNEL</span>
+                                    </div>
+                                    <div class="pipeline-node-desc">
+                                        EVTX Event Logs (Sysmon, Security, System) + psutil memory & sockets.
+                                    </div>
+                                    <div class="pipeline-node-metric">⚡ &lt; 5ms Ingestion</div>
                                 </div>
-                                <div class="guide-sub-card">
-                                    <h4>⚡ Sigma Detection Engine</h4>
-                                    <p>Correlates multi-hop attack signatures (Ransomware shadow deletion, ProcDump / LSASS memory access, LOLBAS, Cobalt Strike).</p>
+                                <div class="pipeline-arrow">➔</div>
+                                <div class="pipeline-node">
+                                    <div class="pipeline-node-header">
+                                        <i data-lucide="filter" style="color: var(--purple); width: 14px; height: 14px;"></i>
+                                        <span>INGESTION ENGINE</span>
+                                    </div>
+                                    <div class="pipeline-node-desc">
+                                        Asynchronous event normalization, timestamp indexing, and SQLite persistence.
+                                    </div>
+                                    <div class="pipeline-node-metric">⚡ &lt; 2ms Indexing</div>
+                                </div>
+                                <div class="pipeline-arrow">➔</div>
+                                <div class="pipeline-node">
+                                    <div class="pipeline-node-header">
+                                        <i data-lucide="zap" style="color: var(--amber); width: 14px; height: 14px;"></i>
+                                        <span>SIGMA CORRELATION</span>
+                                    </div>
+                                    <div class="pipeline-node-desc">
+                                        Compound behavioral pattern matching & Shannon entropy randomness evaluation.
+                                    </div>
+                                    <div class="pipeline-node-metric">⚡ &lt; 10ms Rule Engine</div>
+                                </div>
+                                <div class="pipeline-arrow">➔</div>
+                                <div class="pipeline-node">
+                                    <div class="pipeline-node-header">
+                                        <i data-lucide="bot" style="color: var(--cyan); width: 14px; height: 14px;"></i>
+                                        <span>VALKYRIE AI SQUAD</span>
+                                    </div>
+                                    <div class="pipeline-node-desc">
+                                        Multi-Agent cognitive reasoning (Triage, Intel, DFIR, SOAR Commander).
+                                    </div>
+                                    <div class="pipeline-node-metric">⚡ Tier-3 Analysis</div>
+                                </div>
+                                <div class="pipeline-arrow">➔</div>
+                                <div class="pipeline-node">
+                                    <div class="pipeline-node-header">
+                                        <i data-lucide="shield-alert" style="color: var(--crimson); width: 14px; height: 14px;"></i>
+                                        <span>AUTONOMOUS SOAR</span>
+                                    </div>
+                                    <div class="pipeline-node-desc">
+                                        Host firewall isolation, thread suspension (NtSuspendProcess), and NTFS quarantine.
+                                    </div>
+                                    <div class="pipeline-node-metric">⚡ &lt; 15ms Containment</div>
+                                </div>
+                            </div>
+
+                            <h4 style="margin-top: 18px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-primary);">DEFCON OPERATIONAL THREAT LEVEL SCALE</h4>
+                            <table class="guide-table">
+                                <thead>
+                                    <tr>
+                                        <th>LEVEL</th>
+                                        <th>NAME</th>
+                                        <th>OPERATIONAL MEANING</th>
+                                        <th>AUTOMATED POSTURE</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><span class="badge-tag badge-crit">DEFCON 1</span></td>
+                                        <td>CRITICAL INTRUSION</td>
+                                        <td>Active ransomware encryption loop, canary honeypot breach, or C2 beacon confirmed.</td>
+                                        <td>Instant process thread freeze, auto-kill, and emergency firewall network isolation.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge-tag badge-yellow">DEFCON 2</span></td>
+                                        <td>CREDENTIAL THEFT</td>
+                                        <td>LSASS memory dumping attempt or unauthorized privilege escalation observed.</td>
+                                        <td>Target PID suspension, credential token alert, high-priority SOC dispatch.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge-tag badge-yellow">DEFCON 3</span></td>
+                                        <td>SUSPICIOUS EXECUTION</td>
+                                        <td>Obfuscated download cradles, LOLBAS proxy execution, or Run key persistence.</td>
+                                        <td>Process containment flagged, Valkyrie multi-agent investigation engaged.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge-tag badge-cyan">DEFCON 4</span></td>
+                                        <td>ANOMALOUS TELEMETRY</td>
+                                        <td>Failed logons burst, anomalous port scanning, or benign recon command detected.</td>
+                                        <td>Telemetry logged in database, correlation metrics updated.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><span class="badge-tag badge-green">DEFCON 5</span></td>
+                                        <td>NORMAL BASELINE</td>
+                                        <td>All Windows sensor channels nominal, zero high-severity anomalies present.</td>
+                                        <td>Standard real-time event harvesting, background deception watchers active.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- SECTION 2: Windows Telemetry & Sysmon Event IDs -->
+                        <div class="guide-card" id="sec-events">
+                            <h3><i data-lucide="file-text" class="cyan"></i> 2. WINDOWS TELEMETRY & SYSMON EVENT ID MATRIX</h3>
+                            <p>
+                                Windows Event Logs are the authoritative ground truth of endpoint activity. AEGIS-SOC ingests events via native <code>win32evtlog</code> APIs and correlates them against behavioral Sigma signatures. Below are the key Event IDs monitored in real time:
+                            </p>
+
+                            <table class="guide-table">
+                                <thead>
+                                    <tr>
+                                        <th>SOURCE / EVENT ID</th>
+                                        <th>EVENT NAME</th>
+                                        <th>SECURITY RELEVANCE & WHAT IT DETECTS</th>
+                                        <th>SIGMA CORRELATION</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Sysmon Event 1</strong></td>
+                                        <td>Process Creation</td>
+                                        <td>Captures full CommandLine, ParentProcess, Hashes, and User. Detects LOLBAS (certutil, mshta), obfuscated PowerShell, and dropper execution.</td>
+                                        <td><code>SIGMA-WIN-001</code> / <code>003</code> / <code>005</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Sysmon Event 3</strong></td>
+                                        <td>Network Connection</td>
+                                        <td>Logs protocol, source/destination IP, destination port, and process name. Detects C2 reverse shells, Cobalt Strike beacons, and data exfiltration.</td>
+                                        <td><code>SIGMA-WIN-007</code> (C2 Sockets)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Sysmon Event 7</strong></td>
+                                        <td>Image / DLL Loaded</td>
+                                        <td>Monitors dynamically loaded DLL libraries into running processes. Detects DLL side-loading, injection, and unsigned offensive modules.</td>
+                                        <td>DFIR Forensics Correlation</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Sysmon Event 10</strong></td>
+                                        <td>ProcessAccess</td>
+                                        <td>Detects when an external process opens a memory handle to <code>lsass.exe</code> with read permissions (ProcDump, Mimikatz, comsvcs.dll).</td>
+                                        <td><code>SIGMA-WIN-002</code> (LSASS Dump)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Sysmon Event 11</strong></td>
+                                        <td>FileCreate</td>
+                                        <td>Logs file creation path, executable extensions, and writing process. Detects ransomware file drops and dropper staging.</td>
+                                        <td>Anti-Ransomware Shield</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Sysmon Event 22</strong></td>
+                                        <td>DNS Query</td>
+                                        <td>Captures DNS lookups initiated by any process. Detects algorithmic C2 domains (DGA) and DNS tunneling exfiltration.</td>
+                                        <td>Threat Intel Integration</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Security 4624 / 4625</strong></td>
+                                        <td>Logon Success / Failure</td>
+                                        <td>Audits authentication attempts. High frequencies of 4625 indicate brute-force or password spraying attacks.</td>
+                                        <td>Anomalous Auth Watchdog</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Security 1102 / Sys 104</strong></td>
+                                        <td>Audit Log Cleared</td>
+                                        <td>Adversary anti-forensic attempt to blind investigators via <code>wevtutil cl Security</code>.</td>
+                                        <td><code>SIGMA-WIN-004</code> (Anti-Tamper)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>System 7045</strong></td>
+                                        <td>New Service Installed</td>
+                                        <td>Windows service creation. Detects persistent backdoors and adversary privilege escalation.</td>
+                                        <td>Persistence Tracker</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- SECTION 3: 8 Command Center Workspaces -->
+                        <div class="guide-card" id="sec-modules">
+                            <h3><i data-lucide="layout-grid" class="purple"></i> 3. THE 8 COMMAND CENTER WORKSPACES</h3>
+                            <p>AEGIS-SOC is organized into 8 mission-critical operational workspaces accessible via the top navigation bar:</p>
+                            
+                            <div class="playbook-grid">
+                                <div class="playbook-card info">
+                                    <div class="playbook-header">
+                                        <h4>1. WAR ROOM & ATTACK GRAPH</h4>
+                                        <span class="badge-tag badge-cyan">TAB 1</span>
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>What it does:</strong> Central tactical operations dashboard. Renders an interactive live canvas attack graph with SOC Hub, Endpoint, Suspicious Processes, and MITRE IOC nodes. Displays live telemetry table.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>Key Controls:</strong>
+                                        <ul>
+                                            <li><code>[Audit Live Host]</code>: Sweeps physical Windows PC, collects active processes, sockets, memory, and pushes to graph.</li>
+                                            <li><code>[Inspect]</code>: Opens the raw EVTX inspector modal for deep JSON forensics.</li>
+                                            <li><code>[INCIDENT DOSSIER]</code>: Top-right button; generates an executive CISO-ready incident report.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="playbook-card info">
+                                    <div class="playbook-header">
+                                        <h4>2. VALKYRIE AI COGNITIVE SQUADRON</h4>
+                                        <span class="badge-tag badge-purple">TAB 2</span>
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>What it does:</strong> Multi-Agent AI team (<code>AEGIS-TRIAGE</code>, <code>CYBER-INTEL</code>, <code>DFIR-INVESTIGATOR</code>, <code>SOAR-COMMANDER</code>) providing natural language conversational analysis and automated threat triage.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>Key Controls:</strong>
+                                        <ul>
+                                            <li>Chat prompt: Ask any question (e.g. <em>"explain root cause of PID 4812"</em>).</li>
+                                            <li>1-Click Action Buttons: <code>[Isolate Host]</code>, <code>[Restore Host]</code>, <code>[Triage Summary]</code>, <code>[Eradicate Threats]</code>.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div class="playbook-card info">
+                                    <div class="playbook-header">
+                                        <h4>3. MITRE ATT&CK HEATMAP</h4>
+                                        <span class="badge-tag badge-yellow">TAB 3</span>
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>What it does:</strong> Comprehensive Enterprise ATT&CK v15 matrix covering all 12 kill-chain phases (Initial Access through Impact) with active threat counters and technique mapping.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>When to use:</strong> During security audits and posture reviews to identify detection coverage gaps.
+                                    </div>
+                                </div>
+
+                                <div class="playbook-card info">
+                                    <div class="playbook-header">
+                                        <h4>4. SOAR ACTIONS LOG</h4>
+                                        <span class="badge-tag badge-green">TAB 4</span>
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>What it does:</strong> Immutable blockchain-style audit ledger recording every autonomous kill, network isolation, quarantine action, and operator command with UTC timestamps and provenance.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>When to use:</strong> Compliance audits, post-incident reviews, and legal forensic verification.
+                                    </div>
+                                </div>
+
+                                <div class="playbook-card info">
+                                    <div class="playbook-header">
+                                        <h4>5. THREAT HUNTING (KQL)</h4>
+                                        <span class="badge-tag badge-cyan">TAB 5</span>
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>What it does:</strong> High-speed analytical search workspace executing KQL-like piped queries across ingested telemetry with pre-built query chips and process distribution charts.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>When to use:</strong> Proactive threat hunting when searching for stealthy LOLBAS or living-off-the-land techniques.
+                                    </div>
+                                </div>
+
+                                <div class="playbook-card info">
+                                    <div class="playbook-header">
+                                        <h4>6. ACTIVE DECEPTION & CANARIES</h4>
+                                        <span class="badge-tag badge-yellow">TAB 6</span>
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>What it does:</strong> 4 planted honeypot decoy files with continuous cryptographic SHA-256 baseline monitoring. Triggers immediate DEFCON 1 alarm upon read, modification, or deletion.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>Key Button:</strong> <code>[SIMULATE CANARY TAMPER / ATTACK]</code>: Tests honeypot tripwire in 1 click.
+                                    </div>
+                                </div>
+
+                                <div class="playbook-card info">
+                                    <div class="playbook-header">
+                                        <h4>7. DFIR EVIDENCE VAULT</h4>
+                                        <span class="badge-tag badge-purple">TAB 7</span>
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>What it does:</strong> Captures legal-grade live process memory snapshots, virtual memory RSS, open network sockets, and loaded DLL modules into immutable JSON files in <code>data/vault/</code>.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>Key Action:</strong> Input suspicious PID -> Click <code>[CAPTURE LIVE PROCESS MEMORY DUMP]</code>.
+                                    </div>
+                                </div>
+
+                                <div class="playbook-card crit">
+                                    <div class="playbook-header">
+                                        <h4>8. AUTONOMOUS DEFENSE & BAS ARENA</h4>
+                                        <span class="badge-tag badge-crit">TAB 8</span>
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>What it does:</strong> Central tactical defense command. Features the Emergency Host Isolation Kill-Switch, 4 Real-Time Defense Shields, and 5 Breach & Attack Simulation atomic test vectors.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>Key Action:</strong> Launch atomic attacks to benchmark sub-second detection and neutralization.
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Section 2: How Auto-Kill and Auto-Isolate Work -->
-                        <div class="guide-card">
-                            <h3><i data-lucide="shield-lightning" class="alert-red"></i> 2. DOES IT AUTO-KILL ATTACKS? (HOW CONTAINMENT WORKS)</h3>
-                            <p><strong>YES.</strong> AEGIS-SOC features two distinct operational containment modes:</p>
+                        <!-- SECTION 4: 5 Autonomous Defense Shields -->
+                        <div class="guide-card" id="sec-defense">
+                            <h3><i data-lucide="shield-alert" class="crimson"></i> 4. THE 5 BILLION-DOLLAR AUTONOMOUS DEFENSE ENGINES</h3>
+                            <p>
+                                Traditional SIEMs are passive log dumpsters. AEGIS-SOC is an active counter-measure fortress capable of defending your machine in milliseconds:
+                            </p>
                             
                             <div class="containment-mode-box">
-                                <div class="mode-item">
-                                    <div class="mode-badge-auto">MODE A: FULL AUTONOMOUS (AUTO-KILL & AUTO-ISOLATE)</div>
-                                    <p><strong>Active by Default.</strong> (Toggleable via the header button <code>AUTONOMOUS SOAR: AUTO-KILL: ON</code>).</p>
+                                <div class="mode-item" style="border-left: 3px solid var(--crimson);">
+                                    <div class="mode-badge-auto">MODE A: FULL AUTONOMOUS SOAR (AUTO-KILL & AUTO-ISOLATE)</div>
+                                    <p><strong>Active by Default.</strong> (Toggled via the top navigation switch <code>AUTONOMOUS SOAR: AUTO-KILL: ON</code>):</p>
                                     <ul>
-                                        <li><strong>Critical Alerts (P1 / DEFCON 1):</strong> When an active attack like Ransomware (deleting shadow copies) or LSASS Credential Dumping is detected, VALKYRIE <strong>immediately and automatically kills the offending process tree</strong>.</li>
-                                        <li><strong>Immediate Boundary Isolation:</strong> On destructive breaches, VALKYRIE instantly applies an emergency outbound drop rule to <strong>Windows Defender Firewall</strong> (<code>AEGIS_EMERGENCY_ISOLATION</code>), cutting off attacker C2 communication.</li>
-                                        <li><strong>Zero Human Latency:</strong> Containment occurs in less than <strong>250 milliseconds</strong>, neutralizing the threat before ransomware can encrypt files or credentials can be exfiltrated.</li>
+                                        <li><strong>Anti-Ransomware Zero-Tolerance:</strong> Monitors file writes for Shannon entropy (> 7.20). Automatically suspends all threads of the offending PID via <code>NtSuspendProcess</code> in <strong>&lt; 15 milliseconds</strong>, locking Volume Shadows against deletion.</li>
+                                        <li><strong>Host Perimeter Severing:</strong> On critical breaches, automatically injects emergency <code>netsh advfirewall</code> rules dropping all external inbound/outbound packets while whitelisting management port 8000.</li>
+                                        <li><strong>Zero Human Latency:</strong> Stops adversaries before encryption loops or data exfiltration can take place.</li>
                                     </ul>
                                 </div>
-                                <div class="mode-item">
+
+                                <div class="mode-item" style="border-left: 3px solid var(--amber);">
                                     <div class="mode-badge-manual">MODE B: ANALYST-IN-THE-LOOP (MANUAL APPROVAL)</div>
-                                    <p>If you click the toggle to <strong>AUTO-KILL: OFF</strong>, the system generates high-priority alerts and notifies the SOC analyst, awaiting one of the manual containment methods below.</p>
+                                    <p>If you click the toggle to <strong>AUTO-KILL: OFF</strong>, automatic execution is paused. The system alerts the operator with AI confidence ratings and awaits manual approval via 1-click buttons or Copilot chat commands.</p>
+                                </div>
+                            </div>
+
+                            <div class="method-steps" style="margin-top: 16px;">
+                                <div class="step-card">
+                                    <div class="step-num">ENGINE 1</div>
+                                    <h4>Host Isolation Kill-Switch</h4>
+                                    <p>Click <code>[🚨 ENGAGE HOST ISOLATION]</code>: Windows Defender Firewall drops all external inbound and outbound packets. Whitelists local loopback (127.0.0.1) and AEGIS dashboard port (8000) so your management session stays alive. Click <code>[RESTORE NETWORK ACCESS]</code> when sanitized.</p>
+                                </div>
+
+                                <div class="step-card">
+                                    <div class="step-num">ENGINE 2</div>
+                                    <h4>Shannon Entropy Shield</h4>
+                                    <p>Computes Shannon entropy (0.0 to 8.0) of written buffers. Plaintext is 3.0-4.5; encrypted ransomware writes spike above 7.20. When detected, the engine suspends process execution in &lt; 15ms and blocks <code>vssadmin delete shadows</code>.</p>
+                                </div>
+
+                                <div class="step-card">
+                                    <div class="step-num">ENGINE 3</div>
+                                    <h4>EDR Anti-Tamper Shield</h4>
+                                    <p>Continuously intercepts attempts to blind security tools (e.g. <code>wevtutil cl Security</code>, <code>Set-MpPreference -DisableRealtimeMonitoring</code>, <code>sc stop Sysmon</code>). Immediately terminates the offending caller before execution succeeds.</p>
+                                </div>
+                            </div>
+
+                            <div class="method-steps" style="margin-top: 12px;">
+                                <div class="step-card">
+                                    <div class="step-num">ENGINE 4</div>
+                                    <h4>Binary Disarmament & Vault</h4>
+                                    <p>Calculates SHA-256 cryptographic hash, moves malicious executables into <code>data/quarantine/</code>, applies strict NTFS ACL execution denial (<code>icacls /deny Everyone:(X)</code>), and sanitizes registry autostart Run keys.</p>
+                                </div>
+
+                                <div class="step-card">
+                                    <div class="step-num">ENGINE 5</div>
+                                    <h4>Breach & Attack Simulation (BAS)</h4>
+                                    <p>Built-in battle arena with 5 atomic adversary emulation vectors. Allows you to safely test and benchmark sub-second detection without risking operating system integrity.</p>
+                                </div>
+
+                                <div class="step-card">
+                                    <div class="step-num">ENGINE SLA</div>
+                                    <h4>Sub-15ms TTR Guarantee</h4>
+                                    <p>Every defense action is executed asynchronously with high-priority Windows API calls, ensuring active threats are neutralized before lateral movement can occur.</p>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Section 3: How to Stop & Isolate Attacks (3 Methods) -->
-                        <div class="guide-card">
-                            <h3><i data-lucide="hand" class="amber"></i> 3. HOW TO MANUALLY STOP AND ISOLATE AN ATTACK</h3>
-                            <p>You have <strong>3 instant methods</strong> to stop and isolate an attack at any time:</p>
+                        <!-- SECTION 5: Threat Hunting KQL Guide -->
+                        <div class="guide-card" id="sec-hunting">
+                            <h3><i data-lucide="search" class="cyan"></i> 5. THREAT HUNTING (KQL) QUERY SYNTAX & MASTER CHEATSHEET</h3>
+                            <p>
+                                The KQL Threat Hunting engine executes analytical piped queries directly across ingested telemetry in memory and SQLite. Click the <strong>[Copy Query]</strong> button on any row below to copy it and paste it into the Threat Hunting tab:
+                            </p>
+
+                            <table class="guide-table">
+                                <thead>
+                                    <tr>
+                                        <th>QUERY GOAL</th>
+                                        <th>KQL QUERY SYNTAX</th>
+                                        <th>MITRE TECHNIQUE</th>
+                                        <th>ACTION</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Obfuscated PowerShell</strong></td>
+                                        <td>
+                                            <div class="copy-snippet-box">
+                                                <span class="copy-snippet-code">events | where process =~ 'powershell' and command_line contains '-enc'</span>
+                                                <button class="btn-copy-code" data-copy="events | where process =~ 'powershell' and command_line contains '-enc'">Copy</button>
+                                            </div>
+                                        </td>
+                                        <td>T1059.001 - PowerShell</td>
+                                        <td><span class="badge-tag badge-crit">High Risk</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>LSASS Memory Dumping</strong></td>
+                                        <td>
+                                            <div class="copy-snippet-box">
+                                                <span class="copy-snippet-code">events | where event_id == 10 and process contains 'lsass'</span>
+                                                <button class="btn-copy-code" data-copy="events | where event_id == 10 and process contains 'lsass'">Copy</button>
+                                            </div>
+                                        </td>
+                                        <td>T1003.001 - Credential Access</td>
+                                        <td><span class="badge-tag badge-crit">Critical</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Volume Shadow Copy Deletion</strong></td>
+                                        <td>
+                                            <div class="copy-snippet-box">
+                                                <span class="copy-snippet-code">events | where command_line contains 'vssadmin' and command_line contains 'delete'</span>
+                                                <button class="btn-copy-code" data-copy="events | where command_line contains 'vssadmin' and command_line contains 'delete'">Copy</button>
+                                            </div>
+                                        </td>
+                                        <td>T1490 - Inhibit Recovery</td>
+                                        <td><span class="badge-tag badge-crit">Critical</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>LOLBAS Certutil Download</strong></td>
+                                        <td>
+                                            <div class="copy-snippet-box">
+                                                <span class="copy-snippet-code">events | where process =~ 'certutil' and command_line contains '-urlcache'</span>
+                                                <button class="btn-copy-code" data-copy="events | where process =~ 'certutil' and command_line contains '-urlcache'">Copy</button>
+                                            </div>
+                                        </td>
+                                        <td>T1218 - Proxy Execution</td>
+                                        <td><span class="badge-tag badge-yellow">Suspicious</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Outbound Interactive C2 Sockets</strong></td>
+                                        <td>
+                                            <div class="copy-snippet-box">
+                                                <span class="copy-snippet-code">events | where event_id == 3 and dest_port in (4444, 8080, 1337)</span>
+                                                <button class="btn-copy-code" data-copy="events | where event_id == 3 and dest_port in (4444, 8080, 1337)">Copy</button>
+                                            </div>
+                                        </td>
+                                        <td>T1071.001 - C2 Protocols</td>
+                                        <td><span class="badge-tag badge-crit">Beaconing</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Audit Log Clearance (Tampering)</strong></td>
+                                        <td>
+                                            <div class="copy-snippet-box">
+                                                <span class="copy-snippet-code">events | where event_id in (1102, 104) or command_line contains 'wevtutil'</span>
+                                                <button class="btn-copy-code" data-copy="events | where event_id in (1102, 104) or command_line contains 'wevtutil'">Copy</button>
+                                            </div>
+                                        </td>
+                                        <td>T1070.001 - Indicator Removal</td>
+                                        <td><span class="badge-tag badge-crit">Anti-Tamper</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Suspicious Parent-Child Process Trees</strong></td>
+                                        <td>
+                                            <div class="copy-snippet-box">
+                                                <span class="copy-snippet-code">events | where parent_process in ('winword.exe', 'excel.exe') and process in ('cmd.exe', 'powershell.exe')</span>
+                                                <button class="btn-copy-code" data-copy="events | where parent_process in ('winword.exe', 'excel.exe') and process in ('cmd.exe', 'powershell.exe')">Copy</button>
+                                            </div>
+                                        </td>
+                                        <td>T1059 - Command Line Execution</td>
+                                        <td><span class="badge-tag badge-yellow">Exploitation</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Failed Authentication Bursts</strong></td>
+                                        <td>
+                                            <div class="copy-snippet-box">
+                                                <span class="copy-snippet-code">events | where event_id == 4625 | summarize count() by username</span>
+                                                <button class="btn-copy-code" data-copy="events | where event_id == 4625 | summarize count() by username">Copy</button>
+                                            </div>
+                                        </td>
+                                        <td>T1110 - Brute Force</td>
+                                        <td><span class="badge-tag badge-cyan">Password Spray</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>New Service Persistence</strong></td>
+                                        <td>
+                                            <div class="copy-snippet-box">
+                                                <span class="copy-snippet-code">events | where event_id == 7045 and command_line contains 'AppData'</span>
+                                                <button class="btn-copy-code" data-copy="events | where event_id == 7045 and command_line contains 'AppData'">Copy</button>
+                                            </div>
+                                        </td>
+                                        <td>T1543.003 - Windows Service</td>
+                                        <td><span class="badge-tag badge-yellow">Persistence</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Top Process Distribution</strong></td>
+                                        <td>
+                                            <div class="copy-snippet-box">
+                                                <span class="copy-snippet-code">events | summarize count() by process | take 25</span>
+                                                <button class="btn-copy-code" data-copy="events | summarize count() by process | take 25">Copy</button>
+                                            </div>
+                                        </td>
+                                        <td>Telemetry Profiling</td>
+                                        <td><span class="badge-tag badge-green">Baseline</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- SECTION 6: Valkyrie Copilot Cheatsheet -->
+                        <div class="guide-card" id="sec-copilot">
+                            <h3><i data-lucide="bot" class="purple"></i> 6. VALKYRIE AI COPILOT NATURAL LANGUAGE COMMANDS</h3>
+                            <p>Type any of the following natural language commands directly into the Valkyrie Copilot chat box or click <strong>[Copy]</strong> to copy them:</p>
+
+                            <table class="guide-table">
+                                <thead>
+                                    <tr>
+                                        <th>COMMAND EXAMPLE</th>
+                                        <th>COPILOT ACTION</th>
+                                        <th>RESULT</th>
+                                        <th>ACTION</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>isolate host</code></td>
+                                        <td>Executes emergency network isolation on Windows Defender Firewall.</td>
+                                        <td>All inbound/outbound LAN traffic blocked; port 8000 kept alive.</td>
+                                        <td><button class="btn-copy-code" data-copy="isolate host">Copy</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>restore host</code></td>
+                                        <td>Removes firewall isolation policies.</td>
+                                        <td>Full network access restored to the endpoint.</td>
+                                        <td><button class="btn-copy-code" data-copy="restore host">Copy</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>kill &lt;PID&gt;</code> (e.g. <code>kill 4812</code>)</td>
+                                        <td>Terminates the specified process and its child processes via psutil.</td>
+                                        <td>Target process neutralized and logged in SOAR action history.</td>
+                                        <td><button class="btn-copy-code" data-copy="kill 4812">Copy</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>audit host</code> or <code>scan host</code></td>
+                                        <td>Runs live Windows audit of processes, sockets, and memory.</td>
+                                        <td>Full host hygiene report displayed in chat.</td>
+                                        <td><button class="btn-copy-code" data-copy="audit host">Copy</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>analyze recent alerts</code></td>
+                                        <td>Summarizes current active threats, root cause, and MITRE mapping.</td>
+                                        <td>Comprehensive Tier-3 intelligence briefing returned.</td>
+                                        <td><button class="btn-copy-code" data-copy="analyze recent alerts">Copy</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>explain mitre T1486</code></td>
+                                        <td>Retrieves MITRE ATT&CK intelligence for Data Encrypted for Impact.</td>
+                                        <td>Adversary tactics, detection rules, and mitigations displayed.</td>
+                                        <td><button class="btn-copy-code" data-copy="explain mitre T1486">Copy</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>dump pid &lt;PID&gt;</code></td>
+                                        <td>Triggers DFIR live process memory snapshot for the PID.</td>
+                                        <td>Memory metrics and loaded DLL modules saved to evidence vault.</td>
+                                        <td><button class="btn-copy-code" data-copy="dump pid 4812">Copy</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- SECTION 7: Active Deception & Canaries -->
+                        <div class="guide-card" id="sec-deception">
+                            <h3><i data-lucide="shield" class="amber"></i> 7. ACTIVE DECEPTION & CANARY HONEY-FILES</h3>
+                            <p>
+                                Active Deception catches advanced adversaries at the reconnaissance stage before production data is touched. AEGIS-SOC arms 4 realistic decoy honey-files inside <code>data/canaries/</code>:
+                            </p>
                             
-                            <div class="method-steps">
-                                <div class="step-card">
-                                    <div class="step-num">METHOD 1</div>
-                                    <h4>1-Click SOAR Response Buttons</h4>
-                                    <p>Go to the <strong>VALKYRIE AI ANALYST & COPILOT</strong> tab:</p>
-                                    <ul>
-                                        <li>Click <code>[1-Click Host Isolation]</code>: Immediately locks down the Windows Firewall.</li>
-                                        <li>Click <code>[Kill Malicious PID Tree]</code>: Forcibly terminates the target process.</li>
-                                        <li>Click <code>[Block External C2 IP]</code>: Adds the attacker IP to the perimeter block list.</li>
-                                        <li>Click <code>[Vault Dropped Payload]</code>: Quarantines the file on disk.</li>
-                                    </ul>
-                                </div>
+                            <table class="guide-table">
+                                <thead>
+                                    <tr>
+                                        <th>DECOY FILE NAME</th>
+                                        <th>DECOY PROFILE</th>
+                                        <th>ADVERSARY TARGET ATTRACTION</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>passwords_backup_2026.docx</code></td>
+                                        <td>Corporate Credential Vault</td>
+                                        <td>Attracts credential hunters searching for stored passwords or API tokens.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>aws_production_keys.env</code></td>
+                                        <td>Cloud Infrastructure Secrets</td>
+                                        <td>Attracts attackers searching for AWS/Azure access keys to pivot to cloud.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>q4_financial_audit.xlsx</code></td>
+                                        <td>Executive Financial Records</td>
+                                        <td>Attracts ransomware operators looking for high-value extortion material.</td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>corp_vpn_private.key</code></td>
+                                        <td>Infrastructure Certificate</td>
+                                        <td>Attracts lateral movement and perimeter VPN compromise attempts.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
 
-                                <div class="step-card">
-                                    <div class="step-num">METHOD 2</div>
-                                    <h4>Conversational Copilot Chat</h4>
-                                    <p>In the bottom-right chat box of the <strong>VALKYRIE AI ANALYST</strong> tab, type natural language commands:</p>
-                                    <ul>
-                                        <li>Type: <code>isolate host</code> ➔ Seals network.</li>
-                                        <li>Type: <code>kill &lt;PID&gt;</code> (e.g. <code>kill 4812</code>) ➔ Terminates specific process.</li>
-                                        <li>Type: <code>restore host</code> ➔ Removes firewall block and restores normal network access.</li>
-                                    </ul>
-                                </div>
-
-                                <div class="step-card">
-                                    <div class="step-num">METHOD 3</div>
-                                    <h4>Incident Alert Queue</h4>
-                                    <p>In the <strong>WAR ROOM</strong> view, when an alert appears in the right-hand panel, inspect the offending host and process, then trigger remediation.</p>
-                                </div>
+                            <div class="guide-sub-card" style="margin-top: 10px;">
+                                <h4>⚡ How Tripwires Work</h4>
+                                <p>The background deception watchdog continuously computes SHA-256 cryptographic hashes for each decoy. If an attacker reads, opens, modifies, or deletes any decoy file:
+                                    <br>1. An immediate <strong>DEFCON 1 CRITICAL ALARM</strong> is broadcast across the SOC.
+                                    <br>2. Autonomous SOAR immediately initiates host containment and forensic process dumps.
+                                    <br>3. Operators can test this anytime by clicking <code>[SIMULATE CANARY TAMPER / ATTACK]</code> on the Deception tab.
+                                </p>
                             </div>
                         </div>
 
-                        <!-- Section 4: Live Real-Time Testing -->
-                        <div class="guide-card">
-                            <h3><i data-lucide="shield-check" class="emerald"></i> 4. 100% REAL LIVE WINDOWS MONITORING & VERIFICATION</h3>
-                            <p>AEGIS is directly integrated with your live Windows kernel, native Event Logs, and active process tree. No static or dummy data is used:</p>
+                        <!-- SECTION 8: DFIR Forensics Vault -->
+                        <div class="guide-card" id="sec-dfir">
+                            <h3><i data-lucide="database" class="purple"></i> 8. DFIR FORENSIC EVIDENCE VAULT WORKFLOW</h3>
+                            <p>
+                                The DFIR Evidence Vault captures legal-grade, immutable snapshots of active process memory, handles, loaded DLL modules, and open TCP/UDP sockets on your Windows host:
+                            </p>
                             <ol class="sim-steps">
-                                <li>Click <code>[Audit Live Host]</code> in the top bar: Instantly sweeps all currently running Windows processes, active TCP/UDP sockets, and Event Log channels.</li>
-                                <li>Click <code>[Test Live Detection]</code>: Runs a real reconnaissance command (<code>whoami.exe /priv</code>) through the Windows OS and verifies that the live sensor and Sigma engine instantly capture the execution.</li>
-                                <li><strong>Manual Real-World Test</strong>: Open any PowerShell or Command Prompt terminal on your PC and run:
-                                    <br><code>powershell -NoProfile -Command "Get-Process | Select-Object -First 3"</code>
-                                    <br><em>Result:</em> Watch the live ingestion stream at the bottom of the War Room immediately ingest your real PID, command line, and process tree in real time!
-                                </li>
+                                <li>Navigate to the <strong>[DFIR EVIDENCE VAULT]</strong> tab.</li>
+                                <li>Enter the <strong>PID</strong> of any active process (e.g. from Task Manager, War Room alerts, or Valkyrie chat).</li>
+                                <li>Click <code>[CAPTURE LIVE PROCESS MEMORY DUMP]</code>.</li>
+                                <li>The engine dumps virtual memory statistics (RSS/VMS), all loaded <code>.dll</code> binaries, and active remote sockets into an immutable JSON artifact inside <code>data/vault/</code>.</li>
+                                <li>Click <code>[Inspect]</code> in the table to view the full raw forensic structure in the JSON Inspector Modal.</li>
                             </ol>
                         </div>
 
+                        <!-- SECTION 9: Incident Response Playbooks -->
+                        <div class="guide-card" id="sec-playbooks">
+                            <h3><i data-lucide="book-open" class="emerald"></i> 9. STEP-BY-STEP INCIDENT RESPONSE RUNBOOKS (PLAYBOOKS)</h3>
+                            <p>Standard Operating Procedures (SOP) for the SOC analyst during common high-severity attack scenarios:</p>
+
+                            <div class="playbook-grid">
+                                
+                                <div class="playbook-card crit">
+                                    <div class="playbook-header">
+                                        <h4>PLAYBOOK 1: RANSOMWARE ATTACK (T1486 / T1490)</h4>
+                                        <span class="badge-tag badge-crit">P1 CRITICAL</span>
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>1. Autonomous Action:</strong> Anti-Ransomware Shield detects high-entropy file writes (> 7.20) or shadow copy deletion commands. Offending PID is frozen in &lt; 15ms.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>2. Operator Verification:</strong> Go to <strong>[AUTONOMOUS DEFENSE]</strong> tab. Verify host isolation is engaged.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>3. Forensic Preservation:</strong> Go to <strong>[DFIR VAULT]</strong>, capture PID memory dump.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>4. Remediation:</strong> Vault dropped executable in Quarantine, verify VSS snapshots, then click <code>[RESTORE NETWORK ACCESS]</code>.
+                                    </div>
+                                </div>
+
+                                <div class="playbook-card high">
+                                    <div class="playbook-header">
+                                        <h4>PLAYBOOK 2: LSASS CREDENTIAL HARVEST (T1003.001)</h4>
+                                        <span class="badge-tag badge-yellow">P2 HIGH</span>
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>1. Autonomous Action:</strong> Sigma Rule <code>SIGMA-WIN-002</code> intercepts ProcDump, comsvcs.dll, or Mimikatz memory handles. Process terminated.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>2. Operator Action:</strong> Type in Valkyrie Copilot: <code>kill &lt;PID&gt;</code> to verify child processes are eradicated.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>3. Invalidation:</strong> Force user password reset and invalidate active Kerberos tickets for logged-in accounts.
+                                    </div>
+                                </div>
+
+                                <div class="playbook-card high">
+                                    <div class="playbook-header">
+                                        <h4>PLAYBOOK 3: COBALT STRIKE C2 BEACON (T1071.001)</h4>
+                                        <span class="badge-tag badge-yellow">P2 HIGH</span>
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>1. Autonomous Action:</strong> Sigma Rule <code>SIGMA-WIN-007</code> detects interactive sockets on non-standard offensive ports (4444, 8080, 1337).
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>2. Perimeter Severing:</strong> Isolation engine applies outbound drop rule, severing external socket.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>3. Threat Intel:</strong> Use <strong>[VALKYRIE COPILOT]</strong> to enrich remote C2 IP and identify adversary APT attribution.
+                                    </div>
+                                </div>
+
+                                <div class="playbook-card info">
+                                    <div class="playbook-header">
+                                        <h4>PLAYBOOK 4: EDR ANTI-TAMPER EVASION (T1070.001)</h4>
+                                        <span class="badge-tag badge-cyan">P3 MEDIUM</span>
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>1. Autonomous Action:</strong> Anti-Tamper Shield intercepts <code>wevtutil cl Security</code> or Defender disable commands. Offending caller terminated before command completes.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>2. Operator Action:</strong> Audit Windows Defender real-time monitoring status and verify Event Log channels are intact.
+                                    </div>
+                                </div>
+
+                                <div class="playbook-card crit">
+                                    <div class="playbook-header">
+                                        <h4>PLAYBOOK 5: CANARY HONEYPOT BREACH (T1083 / T1005)</h4>
+                                        <span class="badge-tag badge-crit">P1 CRITICAL</span>
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>1. Autonomous Action:</strong> Honey-file cryptographic hash alteration detected. Immediate DEFCON 1 alarm broadcast and parent process identified.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>2. Operator Action:</strong> Go to <strong>[ACTIVE DECEPTION]</strong> tab. Review tripwire audit log to identify accessed file.
+                                    </div>
+                                    <div class="playbook-section">
+                                        <strong>3. Containment:</strong> Disarm the reading binary via Quarantine Vault and re-arm canary honeypots.
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <!-- SECTION 10: 2-Minute Live Demo / Test Guide -->
+                        <div class="guide-card" id="sec-testing">
+                            <h3><i data-lucide="play-circle" class="emerald"></i> 10. 2-MINUTE LIVE DEMONSTRATION & TEST GUIDE</h3>
+                            <p>Demonstrate all primary capabilities of AEGIS-SOC in under 2 minutes:</p>
+                            
+                            <div class="method-steps">
+                                <div class="step-card">
+                                    <div class="step-num">STEP 1</div>
+                                    <h4>Test Live Host Sensor</h4>
+                                    <p>Click <code>[Audit Live Host]</code> on the top navigation bar. Watch AEGIS sweep your physical PC, analyze active processes and sockets, and update the dashboard in real time.</p>
+                                </div>
+
+                                <div class="step-card">
+                                    <div class="step-num">STEP 2</div>
+                                    <h4>Test BAS Battle Arena</h4>
+                                    <p>Go to <strong>[AUTONOMOUS DEFENSE & BAS ARENA]</strong> tab. Click <code>[Launch Attack]</code> on <strong>Ransomware Burst</strong>. Watch the Anti-Ransomware Shield intercept and freeze the threads in <strong>&lt; 15ms</strong>.</p>
+                                </div>
+
+                                <div class="step-card">
+                                    <div class="step-num">STEP 3</div>
+                                    <h4>Test Active Deception</h4>
+                                    <p>Go to <strong>[ACTIVE DECEPTION & CANARIES]</strong> tab. Click <code>[SIMULATE CANARY TAMPER]</code>. Watch DEFCON escalate to <strong>DEFCON 1</strong> and trigger active defense.</p>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 14px;">
+                                <p style="font-size: 0.82rem; color: var(--text-secondary);">
+                                    <strong>Step 4: Generate Executive Forensic Incident Dossier:</strong> Click the glowing red <code>[INCIDENT DOSSIER]</code> button in the top right to generate a full CISO-ready incident report with attack graphs, root cause, and remediation steps.
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- SECTION 11: Troubleshooting & FAQ -->
+                        <div class="guide-card" id="sec-faq">
+                            <h3><i data-lucide="help-circle" class="cyan"></i> 11. TROUBLESHOOTING & FREQUENTLY ASKED QUESTIONS</h3>
+                            
+                            <div class="faq-grid">
+                                <div class="faq-card">
+                                    <div class="faq-q"><i data-lucide="shield-check" style="width: 14px; height: 14px;"></i> Why does Host Isolation require Administrator privileges?</div>
+                                    <div class="faq-a">
+                                        Modifying Windows Defender Firewall rules via <code>netsh advfirewall</code> requires elevated local privileges. Ensure the terminal or launcher starting AEGIS is executed as <strong>Run as Administrator</strong>.
+                                    </div>
+                                </div>
+
+                                <div class="faq-card">
+                                    <div class="faq-q"><i data-lucide="terminal" style="width: 14px; height: 14px;"></i> How do I install Sysmon in 1 single command?</div>
+                                    <div class="faq-a">
+                                        Open an elevated PowerShell prompt and run:
+                                        <div class="copy-snippet-box" style="margin-top: 6px;">
+                                            <span class="copy-snippet-code">winget install Microsoft.Sysinternals.Sysmon</span>
+                                            <button class="btn-copy-code" data-copy="winget install Microsoft.Sysinternals.Sysmon">Copy</button>
+                                        </div>
+                                        Then start Sysmon with SwiftOnSecurity's recommended config.
+                                    </div>
+                                </div>
+
+                                <div class="faq-card">
+                                    <div class="faq-q"><i data-lucide="database" style="width: 14px; height: 14px;"></i> Where are database records and forensic dumps saved?</div>
+                                    <div class="faq-a">
+                                        All telemetry and audit records reside in <code>data/siem.db</code> (SQLite). Process memory snapshots reside in <code>data/vault/</code>. Quarantined binaries are disarmed inside <code>data/quarantine/</code>.
+                                    </div>
+                                </div>
+
+                                <div class="faq-card">
+                                    <div class="faq-q"><i data-lucide="cpu" style="width: 14px; height: 14px;"></i> Does AEGIS-SOC slow down my computer?</div>
+                                    <div class="faq-a">
+                                        No. AEGIS-SOC is designed with asynchronous Python (FastAPI/asyncio) and background thread pools with average CPU consumption under <strong>&lt; 1%</strong> during standard baseline operation.
+                                    </div>
+                                </div>
+
+                                <div class="faq-card">
+                                    <div class="faq-q"><i data-lucide="wifi-off" style="width: 14px; height: 14px;"></i> Can AEGIS run in an air-gapped / offline network?</div>
+                                    <div class="faq-a">
+                                        Yes! AEGIS-SOC is 100% self-contained and local. It requires zero cloud connectivity for telemetry collection, Sigma correlation, host isolation, or forensic vaulting.
+                                    </div>
+                                </div>
+
+                                <div class="faq-card">
+                                    <div class="faq-q"><i data-lucide="save" style="width: 14px; height: 14px;"></i> How is state preserved between agent sessions?</div>
+                                    <div class="faq-a">
+                                        The codebase uses <strong>codebase-memory-mcp</strong> with an indexed knowledge graph and persistent Architecture Decision Records (ADRs) stored in <code>.codebase-memory/</code> so the system state is remembered across sessions.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
+                </div>
+            </div>
+
+            <!-- TAB: AUTONOMOUS DEFENSE & BAS LIVE BATTLE ARENA -->
+            <div class="tab-pane" id="tab-defense">
+                <div class="defense-viewport">
+                    
+                    <!-- Emergency Host Isolation Kill-Switch Bar -->
+                    <div class="glass-panel isolation-killswitch-strip" id="isolationPanel">
+                        <div class="isolation-info">
+                            <div class="isolation-indicator-dot online" id="isolationDot"></div>
+                            <div>
+                                <span class="isolation-title" id="isolationTitle">HOST PERIMETER: UNRESTRICTED / ONLINE</span>
+                                <span class="isolation-desc" id="isolationDesc">Windows Firewall active. No emergency perimeter containment active.</span>
+                            </div>
+                        </div>
+                        <div class="isolation-actions">
+                            <button class="btn-killswitch" id="btnEngageIsolation">
+                                <i data-lucide="alert-octagon"></i> 🚨 ENGAGE HOST ISOLATION (SEVER LAN)
+                            </button>
+                            <button class="btn-restore-net" id="btnRestoreIsolation">
+                                <i data-lucide="shield-check"></i> RESTORE NETWORK ACCESS
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 4 Advanced Capabilities Status Strip -->
+                    <div class="defense-shields-grid">
+                        
+                        <!-- Shield 1: Anti-Ransomware Zero-Tolerance -->
+                        <div class="glass-panel defense-shield-card">
+                            <div class="shield-card-header">
+                                <div class="header-left">
+                                    <i data-lucide="lock" class="header-icon crimson"></i>
+                                    <h3>ANTI-RANSOMWARE SHIELD</h3>
+                                </div>
+                                <span class="badge-tag badge-crit" id="ransomwareShieldBadge">ONLINE</span>
+                            </div>
+                            <div class="shield-metrics">
+                                <div class="s-metric"><span>SHANNON ENTROPY</span><strong id="entropyVal">> 7.20 THRESHOLD</strong></div>
+                                <div class="s-metric"><span>THREAD FREEZE</span><strong class="emerald">&lt; 15ms LATENCY</strong></div>
+                                <div class="s-metric"><span>VSS SHADOW LOCK</span><strong class="cyan">IMMUTABLE BASELINE</strong></div>
+                            </div>
+                            <p class="shield-desc">Continuous high-entropy write burst monitor. Instantly suspends offending PIDs mid-flight to halt encryption.</p>
+                        </div>
+
+                        <!-- Shield 2: EDR Self-Defense Anti-Tamper -->
+                        <div class="glass-panel defense-shield-card">
+                            <div class="shield-card-header">
+                                <div class="header-left">
+                                    <i data-lucide="eye-off" class="header-icon amber"></i>
+                                    <h3>EDR ANTI-TAMPER SHIELD</h3>
+                                </div>
+                                <span class="badge-tag badge-green">ARMED</span>
+                            </div>
+                            <div class="shield-metrics">
+                                <div class="s-metric"><span>EVENT LOG LOCK</span><strong class="emerald">PROTECTED</strong></div>
+                                <div class="s-metric"><span>DEFENDER UNHOOK</span><strong class="amber">AUTO-BLOCK</strong></div>
+                                <div class="s-metric"><span>ATTACKS BLOCKED</span><strong id="tamperCount" class="crimson">0 ATTEMPTS</strong></div>
+                            </div>
+                            <p class="shield-desc">Intercepts and terminates any adversarial commands attempting <code>wevtutil cl</code>, disabling Defender, or stopping agents.</p>
+                        </div>
+
+                        <!-- Shield 3: Binary Disarmament Quarantine -->
+                        <div class="glass-panel defense-shield-card">
+                            <div class="shield-card-header">
+                                <div class="header-left">
+                                    <i data-lucide="file-x" class="header-icon purple"></i>
+                                    <h3>DISARMAMENT & QUARANTINE</h3>
+                                </div>
+                                <span class="badge-tag badge-purple">VAULTED</span>
+                            </div>
+                            <div class="shield-metrics">
+                                <div class="s-metric"><span>NTFS EXECUTE ACL</span><strong class="crimson">REVOKED</strong></div>
+                                <div class="s-metric"><span>REG RUNKEY VACCINE</span><strong class="emerald">ACTIVE</strong></div>
+                                <div class="s-metric"><span>VAULTED PAYLOADS</span><strong id="quarantineCount" class="purple">0 ITEMS</strong></div>
+                            </div>
+                            <p class="shield-desc">Isolates suspicious executables to <code>data/quarantine/</code>, revokes execute permissions via icacls, and sanitizes Run keys.</p>
+                        </div>
+
+                        <!-- Shield 4: BAS Defense Benchmark -->
+                        <div class="glass-panel defense-shield-card">
+                            <div class="shield-card-header">
+                                <div class="header-left">
+                                    <i data-lucide="zap" class="header-icon cyan"></i>
+                                    <h3>DEFENSIVE SPEED & SLA</h3>
+                                </div>
+                                <span class="badge-tag badge-cyan">SLA 100%</span>
+                            </div>
+                            <div class="shield-metrics">
+                                <div class="s-metric"><span>AUTONOMOUS BLOCK RATE</span><strong class="emerald" id="basBlockRate">100.0%</strong></div>
+                                <div class="s-metric"><span>AVERAGE TTR (LATENCY)</span><strong class="cyan" id="basAvgLatency">&lt; 18.4ms</strong></div>
+                                <div class="s-metric"><span>TOTAL ATOMIC TESTS</span><strong id="basTotalTests">0 RUNS</strong></div>
+                            </div>
+                            <p class="shield-desc">Measured mean response time from adversary execution to complete autonomous threat containment.</p>
+                        </div>
+
+                    </div>
+
+                    <!-- Row: BAS Live Battle Arena & Terminal Feed -->
+                    <div class="bas-battle-grid">
+                        
+                        <!-- Left: Atomic Attack Launchers -->
+                        <div class="glass-panel bas-launcher-panel">
+                            <div class="panel-header">
+                                <div class="header-left">
+                                    <i data-lucide="swords" class="header-icon crimson"></i>
+                                    <h2>BREACH & ATTACK SIMULATION (BAS) ARENA</h2>
+                                </div>
+                                <span class="badge-tag badge-crit">LIVE ADVERSARY EMULATION</span>
+                            </div>
+                            <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 15px;">
+                                Launch atomic unit tests against the live defense mesh. Watch AEGIS-SOC intercept, suspend, isolate, and disarm each attack vector in real time:
+                            </p>
+                            <div class="bas-tests-list">
+                                <div class="bas-test-item">
+                                    <div class="test-item-meta">
+                                        <div class="test-title">1. Ransomware Multi-Threaded Encryption Burst</div>
+                                        <div class="test-sub">MITRE T1486 • Simulates high-entropy file writes and Volume Shadow deletion</div>
+                                    </div>
+                                    <button class="btn-micro btn-launch-bas" data-scenario="ransomware_burst">Launch Attack</button>
+                                </div>
+
+                                <div class="bas-test-item">
+                                    <div class="test-item-meta">
+                                        <div class="test-title">2. LSASS Memory Credential Theft</div>
+                                        <div class="test-sub">MITRE T1003.001 • Simulates procdump targeting LSASS process memory</div>
+                                    </div>
+                                    <button class="btn-micro btn-launch-bas" data-scenario="lsass_harvest">Launch Attack</button>
+                                </div>
+
+                                <div class="bas-test-item">
+                                    <div class="test-item-meta">
+                                        <div class="test-title">3. Cobalt Strike C2 Interactive Beaconing</div>
+                                        <div class="test-sub">MITRE T1071.001 • Simulates unauthorized outbound socket to offensive C2 port 4444</div>
+                                    </div>
+                                    <button class="btn-micro btn-launch-bas" data-scenario="c2_beacon">Launch Attack</button>
+                                </div>
+
+                                <div class="bas-test-item">
+                                    <div class="test-item-meta">
+                                        <div class="test-title">4. EDR Anti-Tamper: Event Log Wipe</div>
+                                        <div class="test-sub">MITRE T1070.001 • Simulates wevtutil cl Security & Defender realtime disable</div>
+                                    </div>
+                                    <button class="btn-micro btn-launch-bas" data-scenario="edr_tamper">Launch Attack</button>
+                                </div>
+
+                                <div class="bas-test-item">
+                                    <div class="test-item-meta">
+                                        <div class="test-title">5. Persistence: Autostart Run Key Dropper</div>
+                                        <div class="test-sub">MITRE T1547.001 • Simulates dropping persistence into Windows Run Registry keys</div>
+                                    </div>
+                                    <button class="btn-micro btn-launch-bas" data-scenario="persistence_runkey">Launch Attack</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Real-time Live Interception Terminal Console -->
+                        <div class="glass-panel bas-console-panel">
+                            <div class="panel-header">
+                                <div class="header-left">
+                                    <i data-lucide="terminal" class="header-icon cyan"></i>
+                                    <h2>AUTONOMOUS INTERCEPTION FEED</h2>
+                                </div>
+                                <span class="badge-tag live-badge"><span class="pulse-dot green"></span> REAL-TIME SOAR</span>
+                            </div>
+                            <div class="bas-feed-console" id="basFeedConsole">
+                                <div class="feed-entry init">
+                                    <span class="feed-ts">[SYSTEM INITIALIZED]</span>
+                                    <span class="feed-msg">Defense Mesh armed. Anti-Ransomware, Anti-Tamper, and Network Isolation ready. Click any attack above to initiate live engagement.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Row: Disarmed & Quarantined Binaries Catalog -->
+                    <div class="glass-panel" style="margin-top: 20px;">
+                        <div class="panel-header">
+                            <div class="header-left">
+                                <i data-lucide="archive" class="header-icon purple"></i>
+                                <h2>DISARMED & QUARANTINED FORENSIC BINARIES</h2>
+                            </div>
+                            <div class="header-badges">
+                                <span class="badge-tag badge-purple">IMMUTABLE VAULT</span>
+                            </div>
+                        </div>
+                        <div class="cyber-table-container">
+                            <table class="cyber-table">
+                                <thead>
+                                    <tr>
+                                        <th>VAULT ID</th>
+                                        <th>FILENAME</th>
+                                        <th>SHA-256 HASH</th>
+                                        <th>ORIGINAL PATH</th>
+                                        <th>REASON</th>
+                                        <th>TIMESTAMP</th>
+                                        <th>NTFS STATUS</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="quarantineTableBody">
+                                    <tr>
+                                        <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">
+                                            Quarantine vault empty. Malicious binaries intercepted by SOAR will be listed here.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 

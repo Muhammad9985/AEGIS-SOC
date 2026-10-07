@@ -116,17 +116,80 @@ document.addEventListener('DOMContentLoaded', () => {
         eventCountWindow = 0;
     }, 2000);
 
-    // 3. Tab Switching
+    // 3. Tab Switching & Horizontal Scroll Controls
+    const viewTabsNav = document.getElementById('viewTabsNav');
+    const btnScrollLeft = document.getElementById('btnScrollTabsLeft');
+    const btnScrollRight = document.getElementById('btnScrollTabsRight');
+    const tabsOverflowHint = document.getElementById('tabsOverflowHint');
+
+    function updateTabScrollState() {
+        if (!viewTabsNav) return;
+        const maxScroll = viewTabsNav.scrollWidth - viewTabsNav.clientWidth;
+        const currentScroll = viewTabsNav.scrollLeft;
+
+        if (btnScrollLeft) {
+            btnScrollLeft.classList.toggle('disabled', currentScroll <= 4);
+        }
+        if (btnScrollRight) {
+            btnScrollRight.classList.toggle('disabled', currentScroll >= maxScroll - 4);
+        }
+        if (tabsOverflowHint) {
+            // Show hint if there is more than 30px of hidden tab content on the right
+            tabsOverflowHint.classList.toggle('hidden', currentScroll >= maxScroll - 30);
+        }
+    }
+
+    if (viewTabsNav) {
+        viewTabsNav.addEventListener('scroll', updateTabScrollState);
+        window.addEventListener('resize', updateTabScrollState);
+        setTimeout(updateTabScrollState, 200);
+
+        // Convert mouse vertical wheel to smooth horizontal scroll
+        viewTabsNav.addEventListener('wheel', (e) => {
+            if (e.deltaY !== 0) {
+                e.preventDefault();
+                viewTabsNav.scrollBy({ left: e.deltaY * 1.5, behavior: 'smooth' });
+            }
+        }, { passive: false });
+    }
+
+    if (btnScrollLeft && viewTabsNav) {
+        btnScrollLeft.addEventListener('click', () => {
+            viewTabsNav.scrollBy({ left: -260, behavior: 'smooth' });
+        });
+    }
+
+    if (btnScrollRight && viewTabsNav) {
+        btnScrollRight.addEventListener('click', () => {
+            viewTabsNav.scrollBy({ left: 260, behavior: 'smooth' });
+        });
+    }
+
+    if (tabsOverflowHint && viewTabsNav) {
+        tabsOverflowHint.addEventListener('click', () => {
+            viewTabsNav.scrollBy({ left: 280, behavior: 'smooth' });
+        });
+    }
+
     document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
             btn.classList.add('active');
+            btn.scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
             const targetId = btn.getAttribute('data-tab');
             document.getElementById(targetId)?.classList.add('active');
             if (targetId === 'tab-war-room') {
                 attackGraph.initCanvasSize();
             }
+            if (targetId === 'tab-defense') {
+                if (typeof loadIsolationStatus === 'function') loadIsolationStatus();
+                if (typeof loadShieldsStatus === 'function') loadShieldsStatus();
+            }
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+            setTimeout(updateTabScrollState, 150);
         });
     });
 
@@ -190,6 +253,12 @@ document.addEventListener('DOMContentLoaded', () => {
             renderAlert(msg.data);
         } else if (msg.type === 'SOAR_ACTION') {
             renderSoarAction(msg.data);
+        } else if (msg.type === 'ISOLATION_UPDATE') {
+            if (typeof updateIsolationUI === 'function') updateIsolationUI(msg.data);
+        } else if (msg.type === 'BAS_INTERCEPTION') {
+            if (typeof appendBasInterceptionToFeed === 'function') appendBasInterceptionToFeed(msg.data);
+        } else if (msg.type === 'GRAPH_UPDATE') {
+            if (msg.data && attackGraph) attackGraph.setData(msg.data);
         }
     }
 
@@ -476,7 +545,502 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(res => res.json())
         .then(data => attackGraph.setData(data));
 
-    fetch('/api/soar/actions')
-        .then(res => res.json())
-        .then(actions => actions.forEach(act => renderSoarAction(act)));
+    // 12. Cognitive Multi-Agent Squadron
+    async function loadCognitiveAgents() {
+        const grid = document.getElementById('cognitiveAgentsGrid');
+        if (!grid) return;
+        try {
+            const resp = await fetch('/api/ai/agents');
+            const agents = await resp.json();
+            grid.innerHTML = agents.map(ag => `
+                <div class="agent-card">
+                    <div class="agent-card-header">
+                        <span class="agent-card-title ${ag.badge_color}">${ag.agent_id}</span>
+                        <span class="badge-tag ai-badge">${ag.certainty}</span>
+                    </div>
+                    <div class="agent-card-role">${ag.role}</div>
+                    <div class="agent-card-desc">${ag.specialization}</div>
+                    <div class="agent-card-footer">
+                        <span class="agent-status-tag">${ag.status}</span>
+                        <span style="color: var(--text-muted);">${ag.current_task.substring(0, 32)}...</span>
+                    </div>
+                </div>
+            `).join('');
+            if (window.lucide) lucide.createIcons();
+        } catch (e) {
+            console.error('Failed to load cognitive agents:', e);
+        }
+    }
+    loadCognitiveAgents();
+
+    // 13. Threat Hunting & KQL Engine
+    async function loadHuntPrebuilts() {
+        const container = document.getElementById('huntPrebuiltChips');
+        if (!container) return;
+        try {
+            const resp = await fetch('/api/hunting/prebuilt');
+            const prebuilts = await resp.json();
+            container.innerHTML = prebuilts.map(p => `
+                <span class="prebuilt-chip" title="${p.description}" data-query="${p.query}">
+                    ${p.name}
+                </span>
+            `).join('');
+            
+            container.querySelectorAll('.prebuilt-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    const qInput = document.getElementById('huntQueryInput');
+                    if (qInput) {
+                        qInput.value = chip.getAttribute('data-query');
+                        executeHunt();
+                    }
+                });
+            });
+        } catch (e) {}
+    }
+    loadHuntPrebuilts();
+
+    async function executeHunt() {
+        const input = document.getElementById('huntQueryInput');
+        const query = input ? input.value.trim() : '';
+        const tbody = document.getElementById('huntTableBody');
+        const matchCount = document.getElementById('huntMatchCount');
+        const latency = document.getElementById('huntLatency');
+        const procChips = document.getElementById('huntProcChips');
+
+        if (!query) return;
+
+        try {
+            const resp = await fetch('/api/hunting/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query, limit: 100 })
+            });
+            const data = await resp.json();
+
+            if (matchCount) matchCount.textContent = data.count || 0;
+            if (latency) latency.textContent = `${data.execution_ms || 0} ms`;
+
+            if (procChips && data.process_breakdown) {
+                const procs = Object.entries(data.process_breakdown);
+                procChips.innerHTML = procs.length ? procs.map(([p, c]) => `
+                    <span class="proc-chip">${p} (${c})</span>
+                `).join('') : '<span class="empty-proc-chip">No matching process breakdown</span>';
+            }
+
+            if (tbody) {
+                if (!data.results || !data.results.length) {
+                    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">No events matched criteria: "${query}"</td></tr>`;
+                } else {
+                    tbody.innerHTML = data.results.map(ev => {
+                        const sevClass = (ev.severity || 'INFO').toLowerCase();
+                        return `
+                            <tr>
+                                <td>${ev.timestamp ? ev.timestamp.split('T')[1].replace('Z','') : ''}</td>
+                                <td><span class="badge-sev badge-${sevClass}">${ev.severity || 'INFO'}</span></td>
+                                <td>${ev.event_id || '-'}</td>
+                                <td>${ev.computer || '-'}</td>
+                                <td><strong style="color: var(--cyan);">${ev.process_name || '-'}</strong></td>
+                                <td style="max-width: 380px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${ev.command_line || '-'}</td>
+                                <td>${ev.mitre_tactic || '-'}</td>
+                                <td><button class="btn-micro btn-inspect-event" data-raw='${JSON.stringify(ev).replace(/'/g, "&apos;")}'>View</button></td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    tbody.querySelectorAll('.btn-inspect-event').forEach(b => {
+                        b.addEventListener('click', () => {
+                            try {
+                                const raw = JSON.parse(b.getAttribute('data-raw'));
+                                rawEventJsonContent.textContent = JSON.stringify(raw, null, 2);
+                                eventModal.classList.add('active');
+                            } catch (e) {}
+                        });
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('Hunt failed:', e);
+        }
+    }
+
+    document.getElementById('btnExecuteHunt')?.addEventListener('click', executeHunt);
+    document.getElementById('huntQueryInput')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') executeHunt();
+    });
+
+    // 14. Active Deception Engine Controls
+    async function loadDeceptionStatus() {
+        const canariesGrid = document.getElementById('canariesListGrid');
+        const armedCount = document.getElementById('armedCanaryCount');
+        const trippedCount = document.getElementById('trippedCanaryCount');
+        const auditBody = document.getElementById('deceptionAuditBody');
+
+        try {
+            const resp = await fetch('/api/deception/status');
+            const data = await resp.json();
+
+            if (armedCount) armedCount.textContent = data.armed_count || 0;
+            if (trippedCount) trippedCount.textContent = data.tripped_count || 0;
+
+            if (canariesGrid && data.canaries) {
+                canariesGrid.innerHTML = data.canaries.map(c => `
+                    <div class="canary-card ${c.status.toLowerCase()}">
+                        <div class="canary-header">
+                            <span class="canary-name">${c.filename}</span>
+                            <span class="badge-tag ${c.status === 'ARMED' ? 'badge-green' : 'badge-crit'}">${c.status}</span>
+                        </div>
+                        <div class="canary-desc">${c.description}</div>
+                        <div class="canary-meta">Category: ${c.category} • Size: ${c.size_bytes}B • SHA256: ${c.baseline_hash.substring(0,16)}...</div>
+                    </div>
+                `).join('');
+            }
+
+            if (auditBody && data.recent_trips && data.recent_trips.length) {
+                auditBody.innerHTML = data.recent_trips.map(t => `
+                    <tr>
+                        <td>${t.timestamp}</td>
+                        <td><strong>${t.filename}</strong></td>
+                        <td>${t.category}</td>
+                        <td><span class="badge-tag badge-crit">${t.trip_type}</span></td>
+                        <td>${t.reason}</td>
+                        <td><span style="color: var(--crimson); font-weight: 700;">ALARM RAISED</span></td>
+                    </tr>
+                `).join('');
+            }
+        } catch (e) {
+            console.error('Failed to load deception status:', e);
+        }
+    }
+    loadDeceptionStatus();
+
+    document.getElementById('btnResetCanaries')?.addEventListener('click', async () => {
+        await fetch('/api/deception/reset', { method: 'POST' });
+        aiConsole.addThought('DECEPTION', 'All Canary Honey-Files re-armed with fresh SHA256 baselines.', 'green');
+        loadDeceptionStatus();
+    });
+
+    document.getElementById('btnTestTripwire')?.addEventListener('click', async () => {
+        aiConsole.addThought('DECEPTION TEST', 'Tampering with decoy honeypot file to test real-time tripwire detection...', 'amber');
+        try {
+            const resp = await fetch('/api/deception/trip-test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename: 'passwords_backup_2026.docx' })
+            });
+            const data = await resp.json();
+            aiConsole.addThought('CANARY TRIPPED', `Tripwire caught tamper event: ${data.canary}. Defcon 1 alert triggered.`, 'red');
+            loadDeceptionStatus();
+        } catch (e) {
+            console.error(e);
+        }
+    });
+
+    // 15. DFIR Forensic Evidence Vault
+    async function loadDfirVault() {
+        const tbody = document.getElementById('dfirTableBody');
+        if (!tbody) return;
+        try {
+            const resp = await fetch('/api/dfir/vault');
+            const artifacts = await resp.json();
+            if (!artifacts.length) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 25px;">Evidence vault empty. Capture on-demand process forensics above.</td></tr>`;
+            } else {
+                tbody.innerHTML = artifacts.map(a => `
+                    <tr>
+                        <td><strong style="color: var(--emerald);">${a.artifact_id}</strong></td>
+                        <td>${a.timestamp ? a.timestamp.split('T')[1].replace('Z','') : '-'}</td>
+                        <td>${a.pid || '-'}</td>
+                        <td>${a.process_name || '-'}</td>
+                        <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${a.cmdline || '-'}</td>
+                        <td>${a.memory_info?.rss_mb ? a.memory_info.rss_mb + ' MB' : '-'}</td>
+                        <td>${a.open_connections ? a.open_connections.length : 0}</td>
+                        <td>${a.loaded_modules ? a.loaded_modules.length : 0}</td>
+                        <td><button class="btn-micro btn-inspect-dfir" data-raw='${JSON.stringify(a).replace(/'/g, "&apos;")}'>Inspect</button></td>
+                    </tr>
+                `).join('');
+
+                tbody.querySelectorAll('.btn-inspect-dfir').forEach(b => {
+                    b.addEventListener('click', () => {
+                        try {
+                            const raw = JSON.parse(b.getAttribute('data-raw'));
+                            rawEventJsonContent.textContent = JSON.stringify(raw, null, 2);
+                            eventModal.classList.add('active');
+                        } catch (e) {}
+                    });
+                });
+            }
+        } catch (e) {
+            console.error('Failed to load DFIR vault:', e);
+        }
+    }
+    loadDfirVault();
+
+    document.getElementById('btnCaptureDfir')?.addEventListener('click', async () => {
+        const pidInput = document.getElementById('dfirPidInput');
+        const nameInput = document.getElementById('dfirProcessNameInput');
+        const pid = parseInt(pidInput?.value, 10);
+        if (!pid) {
+            alert('Please enter a valid active PID.');
+            return;
+        }
+
+        aiConsole.addThought('DFIR VAULT', `Capturing live memory, handles, and DLL modules for PID ${pid}...`, 'emerald');
+        try {
+            const resp = await fetch('/api/dfir/dump-pid', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pid: pid, process_name: nameInput?.value || '', reason: 'MANUAL_OPERATOR_DUMP' })
+            });
+            const data = await resp.json();
+            aiConsole.addThought('DFIR SUCCESS', `Secured forensic artifact ${data.artifact?.artifact_id} for PID ${pid}.`, 'green');
+            loadDfirVault();
+        } catch (e) {
+            console.error('DFIR dump failed:', e);
+        }
+    });
+
+    // 16. Autonomous Defense, Host Isolation, and BAS Battle Arena
+    window.updateIsolationUI = function(data) {
+        const isIsolated = data.is_isolated;
+        const panel = document.getElementById('isolationPanel');
+        const dot = document.getElementById('isolationDot');
+        const title = document.getElementById('isolationTitle');
+        const desc = document.getElementById('isolationDesc');
+
+        if (isIsolated) {
+            panel?.classList.add('isolated-active');
+            dot?.classList.remove('online');
+            dot?.classList.add('isolated');
+            if (title) title.textContent = '🚨 HOST ISOLATION ACTIVE // PERIMETER SEVERED';
+            if (desc) desc.textContent = `All external network packets dropped via Windows Firewall. Management port preserved. Reason: ${data.isolation_reason || data.reason || 'BREACH CONTAINMENT'}`;
+        } else {
+            panel?.classList.remove('isolated-active');
+            dot?.classList.remove('isolated');
+            dot?.classList.add('online');
+            if (title) title.textContent = 'HOST PERIMETER: UNRESTRICTED / ONLINE';
+            if (desc) desc.textContent = 'Windows Firewall active. No emergency perimeter containment active.';
+        }
+    };
+
+    async function loadIsolationStatus() {
+        try {
+            const resp = await fetch('/api/defense/isolation/status');
+            const data = await resp.json();
+            window.updateIsolationUI(data);
+        } catch (e) {
+            console.error('Failed to load isolation status:', e);
+        }
+    }
+    loadIsolationStatus();
+
+    document.getElementById('btnEngageIsolation')?.addEventListener('click', async () => {
+        aiConsole.addThought('HOST ISOLATION', 'Executing emergency perimeter drop policies via netsh advfirewall...', 'red');
+        try {
+            const resp = await fetch('/api/defense/isolation/engage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ host: 'LOCAL', reason: 'MANUAL_OPERATOR_ENGAGE' })
+            });
+            const data = await resp.json();
+            window.updateIsolationUI(data);
+            aiConsole.addThought('PERIMETER SEVERED', 'Host network severed from external LAN/WAN. Port 8000 whitelisted.', 'red');
+        } catch (e) {
+            console.error('Isolation engage failed:', e);
+        }
+    });
+
+    document.getElementById('btnRestoreIsolation')?.addEventListener('click', async () => {
+        aiConsole.addThought('RESTORE NETWORK', 'Lifting emergency isolation firewall policies...', 'emerald');
+        try {
+            const resp = await fetch('/api/defense/isolation/restore', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ host: 'LOCAL', reason: 'OPERATOR_REMEDIATION_CONFIRMED' })
+            });
+            const data = await resp.json();
+            window.updateIsolationUI(data);
+            aiConsole.addThought('NETWORK RESTORED', 'Host firewall rules purged. Full network connectivity restored.', 'green');
+        } catch (e) {
+            console.error('Isolation restore failed:', e);
+        }
+    });
+
+    async function loadShieldsStatus() {
+        try {
+            // 1. Ransomware shield
+            const rResp = await fetch('/api/defense/ransomware/status');
+            const rData = await rResp.json();
+            const badge = document.getElementById('ransomwareShieldBadge');
+            if (badge) badge.textContent = rData.shield_status || 'ONLINE';
+
+            // 2. Anti-tamper
+            const tResp = await fetch('/api/defense/antitamper/status');
+            const tData = await tResp.json();
+            const tCount = document.getElementById('tamperCount');
+            if (tCount) tCount.textContent = `${tData.total_tamper_attacks_intercepted || 0} ATTEMPTS`;
+
+            // 3. BAS metrics
+            const bResp = await fetch('/api/defense/bas/metrics');
+            const bData = await bResp.json();
+            const rate = document.getElementById('basBlockRate');
+            const latency = document.getElementById('basAvgLatency');
+            const tests = document.getElementById('basTotalTests');
+            if (rate) rate.textContent = `${bData.block_rate_percent}%`;
+            if (latency) latency.textContent = `${bData.avg_response_latency_ms}ms`;
+            if (tests) tests.textContent = `${bData.total_tests_executed} RUNS`;
+
+            // 4. Quarantine catalog
+            const qResp = await fetch('/api/defense/quarantine/catalog');
+            const qCatalog = await qResp.json();
+            const qCount = document.getElementById('quarantineCount');
+            if (qCount) qCount.textContent = `${qCatalog.length} ITEMS`;
+            const qBody = document.getElementById('quarantineTableBody');
+            if (qBody && qCatalog.length) {
+                qBody.innerHTML = qCatalog.map(item => `
+                    <tr>
+                        <td><strong style="color: var(--purple);">${item.id}</strong></td>
+                        <td>${item.filename}</td>
+                        <td style="font-family: monospace; color: var(--cyan);">${item.sha256 ? item.sha256.substring(0, 16) + '...' : '-'}</td>
+                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.original_path}</td>
+                        <td>${item.reason}</td>
+                        <td>${item.quarantined_at ? item.quarantined_at.split('T')[1].replace('Z','') : '-'}</td>
+                        <td><span class="badge-tag badge-purple">${item.status}</span></td>
+                    </tr>
+                `).join('');
+            }
+        } catch (e) {
+            console.error('Failed to load defense shields status:', e);
+        }
+    }
+    loadShieldsStatus();
+
+    // BAS Live Battle Feed handler
+    window.appendBasInterceptionToFeed = function(result) {
+        const consoleEl = document.getElementById('basFeedConsole');
+        if (!consoleEl) return;
+
+        const timeStr = result.timestamp ? result.timestamp.split('T')[1].replace('Z', '').split('.')[0] : new Date().toLocaleTimeString();
+        const entry = document.createElement('div');
+        entry.className = 'feed-entry intercepted';
+        entry.innerHTML = `
+            <div class="feed-entry-header">
+                <span class="feed-ts">[${timeStr}]</span>
+                <span class="feed-scenario">${result.scenario_name}</span>
+                <span class="feed-latency">⚡ ${result.latency_ms}ms TTR</span>
+                <span class="badge-tag badge-green">${result.verdict}</span>
+            </div>
+            <div class="feed-details">
+                <em>Simulated Adversary Vector:</em> <code>${result.simulated_cmd}</code>
+            </div>
+            <div class="feed-actions">
+                ${(result.countermeasures || []).map(c => `<div class="feed-action-item">✔ ${c}</div>`).join('')}
+            </div>
+        `;
+        consoleEl.insertBefore(entry, consoleEl.firstChild);
+    };
+
+    // Attach BAS Launch Attack Buttons
+    document.querySelectorAll('.btn-launch-bas[data-scenario]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const scenario = btn.getAttribute('data-scenario');
+            btn.classList.add('running');
+            btn.textContent = 'Engaging...';
+
+            aiConsole.addThought('BAS EMULATION', `Simulating atomic attack: ${scenario}...`, 'amber');
+            try {
+                const resp = await fetch('/api/defense/bas/run-test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ scenario: scenario, host: 'DESKTOP-SEC-HOST' })
+                });
+                const data = await resp.json();
+                if (data.result) {
+                    window.appendBasInterceptionToFeed(data.result);
+                    aiConsole.addThought('THREAT BLOCKED', `${data.result.scenario_name} intercepted in ${data.result.latency_ms}ms with active countermeasure execution.`, 'green');
+                }
+                loadShieldsStatus();
+            } catch (e) {
+                console.error('BAS test failed:', e);
+            } finally {
+                btn.classList.remove('running');
+                btn.textContent = 'Launch Attack';
+            }
+        });
+    });
+
+    // =========================================================================
+    // OPERATOR GUIDE INTERACTIVE ENHANCEMENTS (SEARCH, COPY, SMOOTH JUMP)
+    // =========================================================================
+    // 1. Copy snippet button handler
+    document.addEventListener('click', (e) => {
+        const copyBtn = e.target.closest('.btn-copy-code');
+        if (copyBtn) {
+            const codeEl = copyBtn.closest('.copy-snippet-box')?.querySelector('.copy-snippet-code') 
+                        || copyBtn.previousElementSibling;
+            const textToCopy = copyBtn.getAttribute('data-copy') || codeEl?.textContent?.trim() || '';
+            if (textToCopy) {
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    const originalText = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '✔ COPIED!';
+                    copyBtn.classList.add('copied');
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalText;
+                        copyBtn.classList.remove('copied');
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Copy failed:', err);
+                });
+            }
+        }
+    });
+
+    // 2. Smooth jump & highlight for guide pills
+    document.querySelectorAll('.guide-pill[href^="#"]').forEach(pill => {
+        pill.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = pill.getAttribute('href').substring(1);
+            const targetCard = document.getElementById(targetId);
+            if (targetCard) {
+                targetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                targetCard.classList.remove('card-targeted');
+                void targetCard.offsetWidth; // trigger reflow
+                targetCard.classList.add('card-targeted');
+            }
+        });
+    });
+
+    // 3. Live search filter for guide
+    const guideSearchInput = document.getElementById('guideSearchInput');
+    const guideSearchCounter = document.getElementById('guideSearchCounter');
+    if (guideSearchInput) {
+        guideSearchInput.addEventListener('input', () => {
+            const query = guideSearchInput.value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.guide-scroll-content .guide-card');
+            let matchCount = 0;
+
+            cards.forEach(card => {
+                if (!query) {
+                    card.style.display = '';
+                    matchCount++;
+                } else {
+                    const text = card.textContent.toLowerCase();
+                    if (text.includes(query)) {
+                        card.style.display = '';
+                        matchCount++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                }
+            });
+
+            if (guideSearchCounter) {
+                if (!query) {
+                    guideSearchCounter.textContent = `${cards.length} SECTIONS`;
+                } else {
+                    guideSearchCounter.textContent = `${matchCount} MATCH${matchCount === 1 ? '' : 'ES'}`;
+                }
+            }
+        });
+    }
 });
+

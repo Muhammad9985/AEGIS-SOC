@@ -1,0 +1,11 @@
+{
+    "schema_version": 2,
+    "commit": "994fdbceed36a3360e39101e06254b91b8b89422",
+    "indexed_at": "2026-10-07T07:04:30Z",
+    "project": "AEGIS-SOC",
+    "nodes": 475,
+    "edges": 1489,
+    "original_size": 3145728,
+    "compressed_size": 499492,
+    "compression_level": 9
+}

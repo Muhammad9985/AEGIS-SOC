@@ -33,7 +33,17 @@ venv.bak/
 # Database & Runtime logs
 *.db-journal
 *.log
+*.db
+*.db-wal
+*.db-shm
+data/*.db
 data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+data/quarantine/*
+!data/quarantine/.gitkeep
+data/vault/*
+!data/vault/.gitkeep
 
 # OS & IDE
 .DS_Store

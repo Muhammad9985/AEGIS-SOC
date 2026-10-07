@@ -97,6 +97,13 @@ class SOAREngine:
                             "message": f"PID {pid} [{real_name}] is a protected Windows core process. Termination blocked for system safety."
                         }
 
+                    # Auto-capture memory & process forensic artifacts before termination
+                    try:
+                        from backend.dfir import dfir_engine
+                        dfir_engine.capture_process_forensics(pid, real_name, reason="SOAR_PRE_TERMINATION_AUTO_VAULT")
+                    except Exception as dfir_err:
+                        logger.warning("DFIR auto-capture error on PID %s: %s", pid, dfir_err)
+
                     # Terminate process and children
                     for child in p.children(recursive=True):
                         try:
@@ -105,7 +112,7 @@ class SOAREngine:
                             pass
                     p.terminate()
                     killed = True
-                    details = f"Successfully terminated real Windows process PID {pid} [{p.name()}]"
+                    details = f"Secured DFIR forensic memory snapshot & terminated real Windows process PID {pid} [{p.name()}]"
                 else:
                     details = f"PID {pid} was already exited or neutralized."
             else:

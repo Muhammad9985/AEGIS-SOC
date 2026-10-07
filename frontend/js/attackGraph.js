@@ -57,26 +57,46 @@ class AttackGraphVisualizer {
             5: this.width * 0.91
         };
 
-        this.nodes = graphData.nodes.map((n, idx) => {
-            const targetX = stageXPositions[n.stage || 3] || this.width * 0.5;
-            const targetY = 70 + ((idx % 4) + 1) * ((this.height - 120) / 5);
-
-            if (existingMap.has(n.id)) {
-                const ex = existingMap.get(n.id);
-                return { ...n, x: ex.x, y: ex.y, vx: ex.vx, vy: ex.vy, targetX, targetY, radius: this.getNodeRadius(n.type) };
-            }
-            return {
-                ...n,
-                x: targetX + (Math.random() - 0.5) * 40,
-                y: targetY + (Math.random() - 0.5) * 40,
-                vx: 0,
-                vy: 0,
-                targetX,
-                targetY,
-                radius: this.getNodeRadius(n.type)
-            };
+        // Group nodes by stage to calculate non-overlapping vertical distribution
+        const stageBuckets = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+        graphData.nodes.forEach(n => {
+            const s = n.stage || 3;
+            if (!stageBuckets[s]) stageBuckets[s] = [];
+            stageBuckets[s].push(n);
         });
 
+        const newNodes = [];
+        Object.keys(stageBuckets).forEach(stageNum => {
+            const bucket = stageBuckets[stageNum];
+            const count = bucket.length;
+            const topMargin = 75;
+            const usableHeight = Math.max(200, this.height - 130);
+
+            bucket.forEach((n, idx) => {
+                const targetX = stageXPositions[stageNum] || this.width * 0.5;
+                const targetY = count === 1 
+                    ? this.height * 0.5 
+                    : topMargin + (idx / Math.max(1, count - 1)) * usableHeight;
+
+                if (existingMap.has(n.id)) {
+                    const ex = existingMap.get(n.id);
+                    newNodes.push({ ...n, x: ex.x, y: ex.y, vx: ex.vx, vy: ex.vy, targetX, targetY, radius: this.getNodeRadius(n.type) });
+                } else {
+                    newNodes.push({
+                        ...n,
+                        x: targetX + (Math.random() - 0.5) * 20,
+                        y: targetY + (Math.random() - 0.5) * 20,
+                        vx: 0,
+                        vy: 0,
+                        targetX,
+                        targetY,
+                        radius: this.getNodeRadius(n.type)
+                    });
+                }
+            });
+        });
+
+        this.nodes = newNodes;
         this.links = graphData.links || [];
 
         // Initialize animated flow particles
@@ -119,25 +139,26 @@ class AttackGraphVisualizer {
             
             // Soft pull toward assigned Kill-Chain Stage Column (X)
             if (n1.targetX) {
-                n1.vx += (n1.targetX - n1.x) * 0.035;
+                n1.vx += (n1.targetX - n1.x) * 0.04;
             }
 
-            // Gentle vertical centering
+            // Clean vertical slot retention
             if (n1.targetY) {
-                n1.vy += (n1.targetY - n1.y) * 0.015;
+                n1.vy += (n1.targetY - n1.y) * 0.03;
             }
 
-            // Node-to-node repulsion
+            // Node-to-node repulsion with enhanced same-stage vertical clearance
             for (let j = i + 1; j < this.nodes.length; j++) {
                 const n2 = this.nodes[j];
                 const dx = n2.x - n1.x;
                 const dy = n2.y - n1.y;
                 const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                const minDist = n1.radius + n2.radius + 35;
+                const sameStage = (n1.stage && n2.stage && n1.stage === n2.stage);
+                const minDist = n1.radius + n2.radius + (sameStage ? 56 : 38);
                 if (dist < minDist) {
-                    const force = (minDist - dist) / dist * 0.12;
+                    const force = (minDist - dist) / dist * 0.18;
                     const fx = dx * force;
-                    const fy = dy * force;
+                    const fy = dy * force * (sameStage ? 2.0 : 1.0);
                     n1.vx -= fx;
                     n1.vy -= fy;
                     n2.vx += fx;
